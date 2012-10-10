@@ -1,17 +1,16 @@
 package resource
 
 import (
-	"os"
-	"crypto"
 	"compress/gzip"
-	"path"
-	"net/url"
-	"strings"
-	"net/http"
+	"crypto"
 	"github.com/gosexy/checksum"
 	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strings"
 )
-
 
 const PS = string(os.PathSeparator)
 
@@ -24,7 +23,7 @@ func Allocate(addr string) (*os.File, error) {
 }
 
 func createDirectories(local string) {
-	os.MkdirAll(path.Dir(local), os.ModeDir | 0755)
+	os.MkdirAll(path.Dir(local), os.ModeDir|0755)
 }
 
 func Normalize(addr string) string {
@@ -34,10 +33,10 @@ func Normalize(addr string) string {
 
 	hash := checksum.String(addr, crypto.SHA1)
 
-	return Root + PS + strings.Join([]string{ hash[0:3], hash[3:], basename }, PS)
+	return Root + PS + strings.Join([]string{hash[0:3], hash[3:], basename}, PS)
 }
 
-func Download(addr string) (os.FileInfo, error) {
+func Download(addr string) (string, error) {
 
 	var req *http.Request
 	var err error
@@ -45,7 +44,7 @@ func Download(addr string) (os.FileInfo, error) {
 	req, err = http.NewRequest("GET", addr, nil)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	client := &http.Client{}
@@ -53,13 +52,13 @@ func Download(addr string) (os.FileInfo, error) {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		resp.Body, err = gzip.NewReader(resp.Body)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 
@@ -72,12 +71,12 @@ func Download(addr string) (os.FileInfo, error) {
 	file, err := Allocate(addr)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	defer file.Close()
 
 	file.Write(bytes)
 
-	return file.Stat()
+	return file.Name(), nil
 }
