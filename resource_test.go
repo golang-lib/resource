@@ -1,14 +1,15 @@
 package resource
 
 import (
-	"fmt"
+	"log"
 	"testing"
 )
 
 func TestURLHash(t *testing.T) {
-	file, err := Download("http://code.google.com/p/go/source/browse/src/pkg/net/http/request_test.go?spec=svn0dac18e695f3fdb448883cab04e962d876620fab&name=0dac18e695f3&r=0dac18e695f3fdb448883cab04e962d876620fab")
+	uri := `http://upload.wikimedia.org/wikipedia/commons/b/be/Kukenan_Roraima_GS.jpg`
+	file, err := Download(uri, "downloads")
 	if err != nil {
-		panic(err)
+		t.Errorf("Could not download: %s", err.Error())
 	}
-	fmt.Printf("%v\n", file.Name())
+	log.Printf("Downloaded to: %s\n", file)
 }

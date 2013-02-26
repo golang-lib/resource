@@ -3,8 +3,9 @@ package resource
 import (
 	"compress/gzip"
 	"crypto"
+	"fmt"
 	"github.com/gosexy/checksum"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,34 +15,60 @@ import (
 
 const PS = string(os.PathSeparator)
 
-var Root = "downloads" + PS
+// Size of the first directory chunk.
+var Offset = 8
 
-func Allocate(addr string) (*os.File, error) {
-	local := Normalize(addr)
-	createDirectories(local)
+// Hasing method.
+var HashMethod = crypto.SHA1
+
+// Optional salt.
+var Salt = ""
+
+/*
+	Given an URL returns a local *os.File.
+*/
+func Allocate(uri string, basepath string) (*os.File, error) {
+	local, err := LocalPath(uri, basepath)
+	if err != nil {
+		return nil, err
+	}
+	err = os.MkdirAll(path.Dir(local), os.ModeDir|0755)
+	if err != nil {
+		return nil, err
+	}
 	return os.Create(local)
 }
 
-func createDirectories(local string) {
-	os.MkdirAll(path.Dir(local), os.ModeDir|0755)
-}
+/*
+	Given an URL returns a local file path.
+*/
+func LocalPath(uri string, basepath string) (string, error) {
+	stat, err := os.Stat(basepath)
 
-func Normalize(addr string) string {
-	data, _ := url.Parse(addr)
+	if err == nil {
+		if stat.IsDir() == false {
+			return "", fmt.Errorf("Path %s is a file, not a directory.", basepath)
+		}
+	}
+
+	data, _ := url.Parse(uri)
 
 	basename := path.Base(data.Path)
 
-	hash := checksum.String(addr, crypto.SHA1)
+	hash := checksum.String(uri+Salt, HashMethod)
 
-	return Root + PS + strings.Join([]string{hash[0:3], hash[3:], basename}, PS)
+	return strings.TrimRight(basepath, PS) + PS + strings.TrimLeft(strings.Join([]string{hash[0:Offset], hash[Offset:], basename}, PS), PS), nil
 }
 
-func Download(addr string) (string, error) {
+/*
+	Downloads the given URI to a file into the base directory.
+*/
+func Download(uri string, basepath string) (string, error) {
 
 	var req *http.Request
 	var err error
 
-	req, err = http.NewRequest("GET", addr, nil)
+	req, err = http.NewRequest("GET", uri, nil)
 
 	if err != nil {
 		return "", err
@@ -64,19 +91,15 @@ func Download(addr string) (string, error) {
 
 	defer resp.Body.Close()
 
-	bytes, _ := ioutil.ReadAll(resp.Body)
-
-	// TODO: Simultaneous reader-writer
-
-	file, err := Allocate(addr)
+	fp, err := Allocate(uri, basepath)
 
 	if err != nil {
 		return "", err
 	}
 
-	defer file.Close()
+	defer fp.Close()
 
-	file.Write(bytes)
+	io.Copy(fp, resp.Body)
 
-	return file.Name(), nil
+	return fp.Name(), nil
 }
