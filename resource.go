@@ -24,8 +24,8 @@ var Salt = ""
 /*
 	Given an URL returns a local *os.File.
 */
-func Allocate(uri string, basepath string) (*os.File, error) {
-	local, err := LocalPath(uri, basepath)
+func allocate(uri string, basepath string) (*os.File, error) {
+	local, err := localPath(uri, basepath)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func Allocate(uri string, basepath string) (*os.File, error) {
 /*
 	Given an URL returns a local file path.
 */
-func LocalPath(uri string, basepath string) (string, error) {
+func localPath(uri string, basepath string) (string, error) {
 	stat, err := os.Stat(basepath)
 
 	if err == nil {
@@ -88,7 +88,7 @@ func Download(uri string, basepath string) (string, error) {
 
 	defer resp.Body.Close()
 
-	fp, err := Allocate(uri, basepath)
+	fp, err := allocate(uri, basepath)
 
 	if err != nil {
 		return "", err
