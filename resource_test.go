@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestURLHash(t *testing.T) {
+func TestDownload(t *testing.T) {
 	uri := `http://upload.wikimedia.org/wikipedia/commons/b/be/Kukenan_Roraima_GS.jpg`
 	file, err := Download(uri, "downloads")
 	if err != nil {

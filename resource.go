@@ -4,8 +4,8 @@ import (
 	"compress/gzip"
 	"crypto"
 	"fmt"
-	"github.com/gosexy/checksum"
 	"io"
+	"menteslibres.net/gosexy/checksum"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,9 +14,6 @@ import (
 )
 
 const PS = string(os.PathSeparator)
-
-// Size of the first directory chunk.
-var Offset = 8
 
 // Hasing method.
 var HashMethod = crypto.SHA1
@@ -57,7 +54,7 @@ func LocalPath(uri string, basepath string) (string, error) {
 
 	hash := checksum.String(uri+Salt, HashMethod)
 
-	return strings.TrimRight(basepath, PS) + PS + strings.TrimLeft(strings.Join([]string{hash[0:Offset], hash[Offset:], basename}, PS), PS), nil
+	return strings.TrimRight(basepath, PS) + PS + strings.TrimLeft(strings.Join([]string{hash[0:4], hash[4:8], hash[8:12], hash[12:], basename}, PS), PS), nil
 }
 
 /*

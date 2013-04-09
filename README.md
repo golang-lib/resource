@@ -1,9 +1,9 @@
 # gosexy/resource
 
-A simple resource downloader.
+A simple file downloader.
 
 ```go
-import "github.com/gosexy/resource"
+import "menteslibres.net/gosexy/resource"
 ```
 
 Example:
@@ -14,7 +14,7 @@ uri := `http://upload.wikimedia.org/wikipedia/commons/b/be/Kukenan_Roraima_GS.jp
 file, err := resource.Download(uri, "downloads")
 
 if err != nil {
-	t.Errorf("Could not download: %s", err.Error())
+	log.Fatalf("Could not download: %s", err.Error())
 }
 
 log.Printf("Downloaded to: %s\n", file)
@@ -23,5 +23,9 @@ log.Printf("Downloaded to: %s\n", file)
 Output:
 
 ```
-2013/02/25 22:41:18 Downloaded to: downloads/f73/14aea91da675ba7f3846d477edb24fc796e13/Kukenan_Roraima_GS.jpg
+2013/04/09 21:02:46 Downloaded to: downloads/f731/4aea/91da/675ba7f3846d477edb24fc796e13/Kukenan_Roraima_GS.jpg
 ```
+
+## Documentation
+
+See the [online docs](http://godoc.org/menteslibres.net/gosexy/resource).
