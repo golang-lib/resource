@@ -3,7 +3,7 @@ package resource
 import (
 	"compress/gzip"
 	"crypto"
-	"fmt"
+	"errors"
 	"io"
 	"menteslibres.net/gosexy/checksum"
 	"net/http"
@@ -13,90 +13,94 @@ import (
 	"strings"
 )
 
-const PS = string(os.PathSeparator)
+// Path separator string
+const pathSeparator = string(os.PathSeparator)
 
 // Hasing method.
-var HashMethod = crypto.SHA1
+var hashingFunc = crypto.SHA1
 
-// Optional salt.
-var Salt = ""
+var (
+	ErrNotADirectory = errors.New(`Path %s is a file, expecting a directory.`)
+)
 
-/*
-	Given an URL returns a local *os.File.
-*/
+// Creates a local *os.File based on the given URI. The user is responsible for
+// closing the file.
 func allocate(uri string, basepath string) (*os.File, error) {
-	local, err := localPath(uri, basepath)
-	if err != nil {
+	var local string
+	var err error
+
+	if local, err = localPath(uri, basepath); err != nil {
 		return nil, err
 	}
-	err = os.MkdirAll(path.Dir(local), os.ModeDir|0755)
-	if err != nil {
+
+	if err = os.MkdirAll(path.Dir(local), os.ModeDir|0755); err != nil {
 		return nil, err
 	}
+
 	return os.Create(local)
 }
 
-/*
-	Given an URL returns a local file path.
-*/
+// Returns a unique file path for a given URL.
 func localPath(uri string, basepath string) (string, error) {
-	stat, err := os.Stat(basepath)
+	var stat os.FileInfo
+	var err error
+	var urlData *url.URL
+
+	stat, err = os.Stat(basepath)
 
 	if err == nil {
+		// Path exists.
 		if stat.IsDir() == false {
-			return "", fmt.Errorf("Path %s is a file, not a directory.", basepath)
+			// Path is not a directory.
+			return "", ErrNotADirectory
 		}
 	}
 
-	data, _ := url.Parse(uri)
+	if urlData, err = url.Parse(uri); err != nil {
+		return "", err
+	}
 
-	basename := path.Base(data.Path)
+	basename := path.Base(urlData.Path)
 
-	hash := checksum.String(uri+Salt, HashMethod)
+	hash := checksum.String(uri, hashingFunc)
 
-	return strings.TrimRight(basepath, PS) + PS + strings.TrimLeft(strings.Join([]string{hash[0:4], hash[4:8], hash[8:12], hash[12:], basename}, PS), PS), nil
+	return strings.TrimRight(basepath, pathSeparator) + pathSeparator + strings.TrimLeft(strings.Join([]string{hash[0:4], hash[4:8], hash[8:12], hash[12:], basename}, pathSeparator), pathSeparator), nil
 }
 
-/*
-	Downloads the given URI to a file into the base directory.
-*/
+// Downloads the given URI into a local file and returns the file path.
 func Download(uri string, basepath string) (string, error) {
-
 	var req *http.Request
+	var resp *http.Response
 	var err error
+	var fp *os.File
 
-	req, err = http.NewRequest("GET", uri, nil)
-
-	if err != nil {
+	if req, err = http.NewRequest("GET", uri, nil); err != nil {
 		return "", err
 	}
 
 	client := &http.Client{}
 
-	resp, err := client.Do(req)
-
-	if err != nil {
+	if resp, err = client.Do(req); err != nil {
 		return "", err
 	}
 
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		resp.Body, err = gzip.NewReader(resp.Body)
-		if err != nil {
+		if resp.Body, err = gzip.NewReader(resp.Body); err != nil {
 			return "", err
 		}
 	}
 
 	defer resp.Body.Close()
 
-	fp, err := allocate(uri, basepath)
-
-	if err != nil {
+	if fp, err = allocate(uri, basepath); err != nil {
 		return "", err
 	}
 
 	defer fp.Close()
 
-	io.Copy(fp, resp.Body)
+	if _, err = io.Copy(fp, resp.Body); err != nil {
+		return "", err
+	}
 
 	return fp.Name(), nil
 }
